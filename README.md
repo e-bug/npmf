@@ -43,7 +43,7 @@ max_iter=2000
 
 # factorize data matrix
 W, Z, user_biases, item_biases, err_train, pred_fn = \
-    npmf.models.sgd(M, num_features=k, nanvalue=nanvalue, lr0=init_lr,
+    npmf.models.sgd(M, num_features=k, nanvalue=nanvalue, lr0=init_lr, batch_size=16,
                     decay_fn=lambda lr, step: inverse_time_decay(lr, step, decay_rate, max_iter),
                     lambda_user=lambda_u, lambda_item=lambda_i, max_iter=max_iter)
 M_hat = pred_fn(W, Z, user_biases, item_biases)
@@ -78,7 +78,7 @@ max_iter=2000
 
 # factorize data matrix
 W, Z, user_biases, item_biases, err_train, pred_fn = \
-    sgd_bias_weight(M, confidence=C, num_features=k, nanvalue=nanvalue, lr0=init_lr,
+    sgd_bias_weight(M, confidence=C, num_features=k, nanvalue=nanvalue, lr0=init_lr, batch_size=16,
                     decay_fn=lambda lr, step: exponential_decay(lr, step, decay_rate, max_iter),
                     lambda_user=lambda_u, lambda_item=lambda_i, max_iter=max_iter)
 M_hat = pred_fn(W, Z, user_biases, item_biases)
@@ -108,7 +108,7 @@ nanvalue = 0
 max_iter=2000
 
 # instantiate model class
-SGD = MF(npmf.models.sgd, num_features=k, nanvalue=nanvalue, lr0=init_lr,
+SGD = MF(npmf.models.sgd, num_features=k, nanvalue=nanvalue, lr0=init_lr, batch_size=16,
          decay_fn=lambda lr, step: inverse_time_decay(lr, step, decay_rate, max_iter, False),
          lambda_user=lambda_u, lambda_item=lambda_i, max_iter=max_iter)
 
@@ -150,7 +150,7 @@ nanvalue = 0
 max_iter=2000
 
 # instantiate model class
-cvSGD = CvMF(npmf.models.sgd_bias, num_features=k, nanvalue=nanvalue, lr0=init_lr,
+cvSGD = CvMF(npmf.models.sgd_bias, num_features=k, nanvalue=nanvalue, lr0=init_lr, batch_size=16,
              decay_fn=lambda lr, step: inverse_time_decay(lr, step, decay_rate, max_iter, False),
              lambda_user=lambda_u, lambda_item=lambda_i, max_iter=max_iter)
 
