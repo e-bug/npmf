@@ -10,6 +10,7 @@ from __future__ import print_function
 from npmf.error_metrics import *
 from npmf.learning_rate_decay import *
 from npmf.init_functions import *
+from npmf.utils import *
 
 import numpy as np
 
@@ -21,7 +22,7 @@ import numpy as np
 # ==================================================================================================================== #
 
 def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
-                    lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), 
+                    lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), batch_size=32,
                     lambda_user=0.1, lambda_item=0.1, max_iter=2000, stop_criterion=1e-6,
                     err_fn=rmse, display=50, seed=42, **kwargs):
     """
@@ -35,6 +36,7 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
         nanvalue: Value used in `train` indicating a missing entry
         lr0: Intial learning rate
         decay_fn: Learning rate decay function. If None, keeps it constant
+        batch_size: Number of samples employed for each training step
         lambda_user: Regularization strength for users' parameters
         lambda_item: Regularization strength for item' parameters
         max_iter: Maximum number of epochs
@@ -69,6 +71,7 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
     nz_row, nz_col = np.argwhere(train != nanvalue)[:, 0], np.argwhere(train != nanvalue)[:, 1]
     nz_train = list(zip(nz_row, nz_col))
     O = train != nanvalue
+    num_nz = np.sum(O)
 
     # run
     print("start Weighted SGD...")
@@ -77,28 +80,28 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
 
         # shuffle the training rating indices
         np.random.shuffle(nz_train)
+        batches = get_batches(nz_train, batch_size)
 
         # decrease step size
         lr = decay_fn(lr0, it)
 
-        for d, n in nz_train:
-            # update user_features[d,:] and item_features[n, :]
-            user_row = user_features[d, :]
-            item_row = item_features[n, :]
-            err = train[d, n] - (user_row.T).dot(item_row) - user_biases[d] - item_biases[n]
-            r = R[d, n]
+        for b in batches:
+            mask = np.zeros_like(train)
+            mask[b[:, 0], b[:, 1]] = 1
+            errs = mask * (train - pred_fn(user_features, item_features, user_biases, item_biases))
 
-            user_features[d, :] += lr * (r * err * item_row - lambda_user * user_row)
-            item_features[n, :] += lr * (r * err * user_row - lambda_item * item_row)
-            user_biases[d] += lr * (r * err - lambda_user * user_biases[d])
-            item_biases[n] += lr * (r * err - lambda_item * item_biases[n])
+            # update user_features and item_features
+            user_features += lr * ((R * errs.dot(item_features))/batch_size - lambda_user * user_features)
+            item_features += lr * ((R * (errs.T).dot(user_features))/batch_size - lambda_item * item_features)
+            user_biases += lr * (np.sum(R * errs, axis=1)/batch_size - lambda_user * user_biases)
+            item_biases += lr * (np.sum(R * errs, axis=0)/batch_size - lambda_item * item_biases)
 
         # train error
         P = pred_fn(user_features, item_features, user_biases, item_biases)
         err = err_fn(train, P, O)
 
         # loss value
-        loss = 0.5 * (np.sum(R * np.power(O * (train - P), 2))
+        loss = 0.5 * (np.sum(R * np.power(O * (train - P), 2))/num_nz
                       + lambda_user * (np.sum(np.power(user_features, 2)) + np.sum(np.power(user_biases, 2)))
                       + lambda_item * (np.sum(np.power(item_features, 2)) + np.sum(np.power(item_biases, 2))))
 
@@ -156,6 +159,7 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
 
     # find the non-zero ratings indices
     O = train != nanvalue
+    num_nz = np.sum(O)
 
     # run
     print("start Weighted ALS...")
@@ -168,7 +172,7 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
             Z_tilde = np.concatenate((np.ones((Z.shape[0], 1)), Z), axis=1)
             r = R[d, nz_entries]
             m = (Z_tilde.T).dot(np.diag(r))
-            A = m.dot(r[:, np.newaxis] * Z_tilde) + lambda_user * np.identity(num_features+1)
+            A = m.dot(r[:, np.newaxis] * Z_tilde) + lambda_user * num_nz * np.identity(num_features+1)
             b = m.dot(train[d, nz_entries] - item_biases[nz_entries])
             user_upd = np.linalg.solve(A, b)
             user_biases[d] = user_upd[0]
@@ -181,7 +185,7 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
             W_tilde = np.concatenate((np.ones((W.shape[0], 1)), W), axis=1)
             r = R[nz_entries, n]
             m = (W_tilde.T).dot(np.diag(r))
-            A = m.dot(r[:, np.newaxis] * W_tilde) + lambda_item * np.identity(num_features+1)
+            A = m.dot(r[:, np.newaxis] * W_tilde) + lambda_item * num_nz * np.identity(num_features+1)
             b = m.dot(train[nz_entries, n] - user_biases[nz_entries])
             item_upd = np.linalg.solve(A, b)
             item_biases[n] = item_upd[0]
@@ -192,7 +196,7 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
         err = err_fn(train, P, O)
 
         # loss value
-        loss = 0.5 * (np.sum(R**2 * np.power(O * (train - P), 2))
+        loss = 0.5 * (np.sum(R**2 * np.power(O * (train - P), 2))/num_nz
                       + lambda_user * (np.sum(np.power(user_features, 2)) + np.sum(np.power(user_biases, 2)))
                       + lambda_item * (np.sum(np.power(item_features, 2)) + np.sum(np.power(item_biases, 2))))
 
@@ -236,14 +240,6 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
         final training error, function to compute prediction matrix
     """
 
-    def l2_loss(T, W, Z, M, pred_fn):
-        P = pred_fn(W, Z, None, None)
-        loss = 0.5 * (np.sum(M * np.power(T - P, 2))
-                      + lambda_user * np.sum(np.power(W, 2))
-                      + lambda_item * np.sum(np.power(Z, 2)))
-
-        return loss
-
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
@@ -263,6 +259,7 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
     O = train != nanvalue
     R = 1 + 0.1 * np.log(1 + confidence)
     M = O * R
+    num_nz = np.sum(O)
 
     # run
     print("start Weighted ANLS...")
@@ -277,10 +274,12 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
         int_change = 1
         int_loss_list = [np.finfo(np.float64).max]
         while int_change > stop_criterion and int_it < int_iter:
-            user_features += lr * ((M * (train - user_features.dot(item_features.T))).dot(item_features)
-                                   - lambda_user * user_features)
+            P = pred_fn(user_features, item_features, None, None)
+            user_features += lr * ((M * (train -P)).dot(item_features)/num_nz - lambda_user * user_features)
             user_features = np.maximum(user_features, 0)
-            loss = l2_loss(train, user_features, item_features, M, pred_fn)
+            loss = 0.5 * (np.sum(M * np.power(train - P, 2))/num_nz
+                          + lambda_user * np.sum(np.power(user_features, 2))
+                          + lambda_item * np.sum(np.power(item_features, 2)))
             int_loss_list.append(loss)
             int_change = np.fabs(int_loss_list[-1] - int_loss_list[-2]) / np.fabs(int_loss_list[-1])
             int_it += 1
@@ -290,10 +289,12 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
         int_change = 1
         int_loss_list = [np.finfo(np.float64).max]
         while int_change > stop_criterion and int_it < int_iter:
-            item_features += lr * ((M.T * (train.T - item_features.dot(user_features.T))).dot(user_features)
-                                   - lambda_item * item_features)
+            P = pred_fn(user_features, item_features, None, None)
+            item_features += lr * (((M * (train - P)).T).dot(user_features)/num_nz - lambda_item * item_features)
             item_features = np.maximum(item_features, 0)
-            loss = l2_loss(train, user_features, item_features, M, pred_fn)
+            loss = 0.5 * (np.sum(M * np.power(train - P, 2))/num_nz
+                          + lambda_user * np.sum(np.power(user_features, 2))
+                          + lambda_item * np.sum(np.power(item_features, 2)))
             int_loss_list.append(loss)
             int_change = np.fabs(int_loss_list[-1] - int_loss_list[-2]) / np.fabs(int_loss_list[-1])
             int_it += 1
@@ -303,7 +304,7 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
         err = err_fn(train, P, O)
 
         # loss value
-        loss = 0.5 * (np.sum(M * np.power(train - P, 2))
+        loss = 0.5 * (np.sum(M * np.power(train - P, 2))/num_nz
                       + lambda_user * np.sum(np.power(user_features, 2))
                       + lambda_item * np.sum(np.power(item_features, 2)))
 
@@ -319,8 +320,8 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
     return user_features, item_features, None, None, err_train, pred_fn
 
 
-def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0, xmin=0, xmax=1,
-               lambda_user=0.0, lambda_item=0.0, max_iter=2000, stop_criterion=1e-6,
+def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
+               xmin=0, xmax=1, max_iter=2000, stop_criterion=1e-6,
                err_fn=rmse, display=50, seed=42, **kwargs):
     """
     BMF (Bounded Matrix Factorization) weighted by confidence levels for bounded matrix factorization.
@@ -332,9 +333,7 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
         num_features: Number of latent factors to be used in factorizing `train`
         nanvalue: Value used in `train` indicating a missing entry
         xmin: Minimum value that can be predicted 
-        xmax: Maximum value that can be predicted 
-        lambda_user: Regularization strength for users' parameters
-        lambda_item: Regularization strength for item' parameters
+        xmax: Maximum value that can be predicted
         max_iter: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
@@ -389,6 +388,7 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
     O = train != nanvalue
     R = np.sqrt(1 + 0.1 * np.log(1 + confidence))
     M = O * R
+    num_nz = np.sum(O)
 
     # init BMF
     if xmax == 1:
@@ -428,9 +428,7 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
         err = err_fn(train, P, O)
 
         # loss value
-        loss = 0.5 * (np.sum(np.power(M * (train - P), 2))
-                      + lambda_user * np.sum(np.power(user_features, 2))
-                      + lambda_item * np.sum(np.power(item_features, 2)))
+        loss = 0.5 * (np.sum(np.power(M * (train - P), 2))/num_nz)
 
         # store best model
         if loss < min_l:

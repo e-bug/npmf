@@ -19,7 +19,7 @@ from npmf.init_functions import *
 
 class MF(object):
     def __init__(self, algorithm, init_fn=rand_init, num_features=6, nanvalue=0, xmin=None, xmax=None,
-                 lr0=None, decay_fn=None, 
+                 lr0=None, decay_fn=None, batch_size=None,
                  lambda_user=0.1, lambda_item=0.1, max_iter=2000, int_iter=None, stop_criterion=1e-6,
                  err_fn=rmse, display=50, seed=42):
         self.algorithm = algorithm
@@ -29,6 +29,7 @@ class MF(object):
         self.xmax = xmax
         self.lr0 = lr0
         self.decay_fn = decay_fn
+        self.batch_size = batch_size
         self.lambda_user = lambda_user
         self.lambda_item = lambda_item
         self.max_iter = max_iter
@@ -53,7 +54,7 @@ class MF(object):
         self.user_features, self.item_features, self.user_biases, self.item_biases, err_train, self.pred_fn = \
             self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features, nanvalue=self.nanvalue, 
                            xmin=self.xmin, xmax=self.xmax,
-                           lr0=self.lr0, decay_fn=self.decay_fn,
+                           lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                            lambda_user=self.lambda_user, lambda_item=self.lambda_item,
                            max_iter=self.max_iter, int_iter=self.int_iter,
                            stop_criterion=self.stop_criterion, err_fn=self.err_fn, display=self.display, seed=self.seed)
@@ -89,7 +90,7 @@ class WeightedMF(MF):
                            nanvalue=self.nanvalue,
                            confidence=confidence,
                            xmin=self.xmin, xmax=self.xmax,
-                           lr0=self.lr0, decay_fn=self.decay_fn,
+                           lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                            lambda_user=self.lambda_user, lambda_item=self.lambda_item,
                            max_iter=self.max_iter, int_iter=self.int_iter,
                            stop_criterion=self.stop_criterion, err_fn=self.err_fn, display=self.display,
@@ -101,7 +102,7 @@ class WeightedMF(MF):
 
 class CvMF(object):
     def __init__(self, algorithm, init_fn=rand_init, num_features=6, nanvalue=0, xmin=None, xmax=None,
-                 lr0=None, decay_fn=None, 
+                 lr0=None, decay_fn=None, batch_size=None,
                  lambda_user=0.1, lambda_item=0.1, max_iter=2000, int_iter=None, stop_criterion=1e-6,
                  err_fn=rmse, display=50, seed=42):
         self.algorithm = algorithm
@@ -111,6 +112,7 @@ class CvMF(object):
         self.xmax = xmax
         self.lr0 = lr0
         self.decay_fn = decay_fn
+        self.batch_size = batch_size
         self.lambda_user = lambda_user
         self.lambda_item = lambda_item
         self.max_iter = max_iter
@@ -147,7 +149,7 @@ class CvMF(object):
             user_features, item_features, user_biases, item_biases, err_train, self.pred_fn = \
                 self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features, 
                                nanvalue=self.nanvalue, xmin=self.xmin, xmax=self.xmax,
-                               lr0=self.lr0, decay_fn=self.decay_fn, 
+                               lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                                lambda_user=self.lambda_user, lambda_item=self.lambda_item, 
                                max_iter=self.max_iter, int_iter=self.int_iter,
                                stop_criterion=self.stop_criterion, err_fn=self.err_fn, 
@@ -210,7 +212,7 @@ class CvWeightedMF(CvMF):
             user_features, item_features, user_biases, item_biases, err_train, self.pred_fn = \
                 self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features,
                                nanvalue=self.nanvalue, xmin=self.xmin, xmax=self.xmax, confidence=confidence,
-                               lr0=self.lr0, decay_fn=self.decay_fn,
+                               lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                                lambda_user=self.lambda_user, lambda_item=self.lambda_item,
                                max_iter=self.max_iter, int_iter=self.int_iter,
                                stop_criterion=self.stop_criterion, err_fn=self.err_fn,
