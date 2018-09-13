@@ -91,8 +91,9 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
             errs = mask * (train - pred_fn(user_features, item_features, user_biases, item_biases))
 
             # update user_features and item_features
+            user_feats = user_features.copy()
             user_features += lr * ((R * errs.dot(item_features))/batch_size - lambda_user * user_features)
-            item_features += lr * ((R * (errs.T).dot(user_features))/batch_size - lambda_item * item_features)
+            item_features += lr * ((R * (errs.T).dot(user_feats))/batch_size - lambda_item * item_features)
             user_biases += lr * (np.sum(R * errs, axis=1)/batch_size - lambda_user * user_biases)
             item_biases += lr * (np.sum(R * errs, axis=0)/batch_size - lambda_item * item_biases)
 
