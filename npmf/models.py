@@ -250,10 +250,11 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
         int_it = 0
         int_change = 1
         int_loss_list = [np.finfo(np.float64).max]
+        P = pred_fn(user_features, item_features, None, None)
         while int_change > stop_criterion and int_it < int_iter:
-            P = pred_fn(user_features, item_features, None, None)
             user_features += lr * ((O * (train - P)).dot(item_features)/num_nz - lambda_user * user_features)
             user_features = np.maximum(user_features, 0)
+            P = pred_fn(user_features, item_features, None, None)
             loss = 0.5 * (np.sum(np.power(O * (train - P), 2))/num_nz
                           + lambda_user * np.sum(np.power(user_features, 2))
                           + lambda_item * np.sum(np.power(item_features, 2)))
@@ -266,9 +267,9 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
         int_change = 1
         int_loss_list = [np.finfo(np.float64).max]
         while int_change > stop_criterion and int_it < int_iter:
-            P = pred_fn(user_features, item_features, None, None)
             item_features += lr * (((O * (train - P)).T).dot(user_features)/num_nz - lambda_item * item_features)
             item_features = np.maximum(item_features, 0)
+            P = pred_fn(user_features, item_features, None, None)
             loss = 0.5 * (np.sum(np.power(O * (train - P), 2))/num_nz
                           + lambda_user * np.sum(np.power(user_features, 2))
                           + lambda_item * np.sum(np.power(item_features, 2)))
@@ -277,7 +278,6 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
             int_it += 1
 
         # train error
-        P = pred_fn(user_features, item_features, None, None)
         err = err_fn(train, P, O)
 
         # loss value
