@@ -21,8 +21,8 @@ def rmse(X, P, O=1):
     Compute RMSE between values in matrix X and matrix P at the indices specified by the boolean matrix O.
     
     Args:
-        X: Matrix of true values
-        P: Matrix of predictions
+        X: Matrix of true values. Missing entries are set to zeros.
+        P: Matrix of predictions. Missing entries are set to zeros.
         O: Boolean matrix of entries to take into account for RMSE computation. Defaults to `1` (all entries)
     Returns:
         RMSE value
@@ -35,8 +35,8 @@ def mae(X, P, O=1):
     Compute MAE between values in matrix X and matrix P at the indices specified by the boolean matrix O.
     
     Args:
-        X: Matrix of true values
-        P: Matrix of predictions
+        X: Matrix of true values. Missing entries are set to zeros.
+        P: Matrix of predictions. Missing entries are set to zeros.
         O: Boolean matrix of entries to take into account for MAE computation. Defaults to `1` (all entries)
     Returns:
         MAE value
