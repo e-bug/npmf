@@ -115,7 +115,7 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
     print("iter: {:4d}, loss: {:.8f} -- {} on training set: {:.8f} %.".format(it, loss, err_fn.__name__, 100 * err))
     err_train = err
 
-    return user_features, item_features, user_biases, item_biases, err_train, pred_fn
+    return user_features, item_features, user_biases, item_biases, loss, err_train, pred_fn
 
 
 def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
@@ -210,7 +210,7 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
     print("iter: {:4d}, loss: {:.8f} -- {} on training set: {:.8f} %.".format(it, loss, err_fn.__name__, 100 * err))
     err_train = err
 
-    return user_features, item_features, user_biases, item_biases, err_train, pred_fn
+    return user_features, item_features, user_biases, item_biases, loss, err_train, pred_fn
 
 
 def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
@@ -318,7 +318,7 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
     print("iter: {:4d}, loss: {:.8f} -- {} on training set: {:.8f} %.".format(it, loss, err_fn.__name__, 100 * err))
     err_train = err
 
-    return user_features, item_features, None, None, err_train, pred_fn
+    return user_features, item_features, None, None, loss, err_train, pred_fn
 
 
 def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
@@ -454,4 +454,4 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
     print("iter: {:4d}, loss: {:.8f} -- {} on training set: {:.8f} %.".format(it, loss, err_fn.__name__, 100 * err))
     err_train = err
 
-    return user_features, item_features, None, None, err_train, pred_fn
+    return user_features, item_features, None, None, loss, err_train, pred_fn
