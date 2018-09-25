@@ -199,7 +199,7 @@ class CvMF(object):
             self.test_error_agg[err_fn.__name__ + '_' + agg_fn.__name__] = err_agg
             self.test_error_dev[err_fn.__name__ + '_' + agg_fn.__name__] = err_dev
         print("{} {} on {} data: {:.8f} %, {}:  {:.8f}.".format(agg_fn.__name__, err_fn.__name__, err_type,
-                                                                100 * err_agg, dev_fn.__name__, err_dev))
+                                                                err_agg, dev_fn.__name__, err_dev))
         del O, P
         return err_agg, err_dev
 
