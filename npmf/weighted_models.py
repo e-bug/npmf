@@ -107,11 +107,11 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
                       + lambda_item * (np.sum(np.power(item_features, 2)) + np.sum(np.power(item_biases, 2))))
 
         if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
         loss_list.append(loss)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
         it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
     err_train = err
 
     return user_features, item_features, user_biases, item_biases, loss, err_train, pred_fn
@@ -201,11 +201,11 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
                       + lambda_item * (np.sum(np.power(item_features, 2)) + np.sum(np.power(item_biases, 2))))
 
         if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
         loss_list.append(loss)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
         it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
     err_train = err
 
     return user_features, item_features, user_biases, item_biases, loss, err_train, pred_fn
@@ -308,11 +308,11 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
                       + lambda_item * np.sum(np.power(item_features, 2)))
 
         if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
         loss_list.append(loss)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
         it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
     err_train = err
 
     return user_features, item_features, None, None, loss, err_train, pred_fn
@@ -435,7 +435,7 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
             best_Z = item_features.copy()
 
         if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
         loss_list.append(loss)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
         it += 1
@@ -447,7 +447,7 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
     # train error
     P = pred_fn(user_features, item_features, None, None)
     err = err_fn(train, P, O)
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} %.".format(it, loss, err_fn.__name__, err))
+    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
     err_train = err
 
     return user_features, item_features, None, None, loss, err_train, pred_fn

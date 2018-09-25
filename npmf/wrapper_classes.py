@@ -78,7 +78,7 @@ class MF(object):
             self.valid_errors[err_fn.__name__] = err
         elif err_type == 'test':
             self.test_errors[err_fn.__name__] = err
-        print("{} on {} set: {:.8f} %.".format(err_fn.__name__, err_type, err))
+        print("{} on {} set: {:.8f} .".format(err_fn.__name__, err_type, err))
         del O, P
         return err
 
