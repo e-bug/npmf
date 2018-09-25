@@ -157,14 +157,14 @@ cvSGD = CvMF(npmf.models.sgd_bias, num_features=k, nanvalue=nanvalue, lr0=init_l
 # fit the model
 cvSGD.fit(train_matrices)
 # training accuracy
-cvSGD.score(err_fn=npmf.error_metrics.rmse, matrix=train_matrices, err_type='train', 
+cvSGD.score(err_fn=npmf.error_metrics.rmse, matrices_list=train_matrices, err_type='train', 
             agg_fn=np.mean, dev_fn=npmf.error_metrics.se)
-cvSGD.score(err_fn=npmf.error_metrics.mae, matrix=train_matrices, err_type='train', 
+cvSGD.score(err_fn=npmf.error_metrics.mae, matrices_list=train_matrices, err_type='train', 
             agg_fn=np.mean, dev_fn=npmf.error_metrics.se)
 # validation accuracy
-cvSGD.score(err_fn=npmf.error_metrics.rmse, matrix=valid_matrices, err_type='validation', 
+cvSGD.score(err_fn=npmf.error_metrics.rmse, matrices_list=valid_matrices, err_type='validation', 
             agg_fn=np.mean, dev_fn=npmf.error_metrics.se)
-cvSGD.score(err_fn=npmf.error_metrics.mae, matrix=valid_matrices, err_type='validation', 
+cvSGD.score(err_fn=npmf.error_metrics.mae, matrices_list=valid_matrices, err_type='validation', 
             agg_fn=np.mean, dev_fn=npmf.error_metrics.se)
 ```
 ## License
