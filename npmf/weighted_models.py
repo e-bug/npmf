@@ -24,7 +24,7 @@ import numpy as np
 def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
                     lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), batch_size=32,
                     lambda_user=0.1, lambda_item=0.1, max_epochs=2000, stop_criterion=1e-6,
-                    err_fn=rmse, display=50, seed=42, **kwargs):
+                    err_fn=rmse, display=1, seed=42, **kwargs):
     """
     SGD (Stochastic Gradient Descent) weighted by confidence levels for low-rank matrix factorization with biases.
     
@@ -120,7 +120,7 @@ def sgd_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
 
 def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
                     lambda_user=0.1, lambda_item=0.1, max_epochs=2000, stop_criterion=1e-6,
-                    err_fn=rmse, display=50, seed=42, **kwargs):
+                    err_fn=rmse, display=1, seed=42, **kwargs):
     """
     ALS (Alternating Least Squares) weighted by confidence levels for low-rank matrix factorization with biases.
     
@@ -216,7 +216,7 @@ def als_bias_weight(train, confidence, init_fn=rand_init, num_features=6, nanval
 def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
                 lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), 
                 lambda_user=0.1, lambda_item=0.1, max_epochs=2000, int_iter=200, stop_criterion=1e-6,
-                err_fn=rmse, display=50, seed=42, **kwargs):
+                err_fn=rmse, display=1, seed=42, **kwargs):
     """
     ANLS (Alternating Nonnegative Least Squares) weightd by confidence levels for nonnegative matrix factorization.
     
@@ -323,7 +323,7 @@ def anls_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0
 
 def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
                xmin=0, xmax=1, max_epochs=2000, stop_criterion=1e-6,
-               err_fn=rmse, display=50, seed=42, **kwargs):
+               err_fn=rmse, display=1, seed=42, **kwargs):
     """
     BMF (Bounded Matrix Factorization) weighted by confidence levels for bounded matrix factorization.
     

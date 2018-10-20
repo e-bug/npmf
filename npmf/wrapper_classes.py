@@ -21,7 +21,7 @@ class MF(object):
     def __init__(self, algorithm, init_fn=rand_init, num_features=6, nanvalue=0, xmin=None, xmax=None,
                  lr0=None, decay_fn=None, batch_size=None,
                  lambda_user=0.1, lambda_item=0.1, max_epochs=2000, int_iter=None, stop_criterion=1e-6,
-                 err_fn=rmse, display=50, seed=42):
+                 err_fn=rmse, display=1, seed=42):
         self.algorithm = algorithm
         self.init_fn = init_fn
         self.num_features = num_features
@@ -106,7 +106,7 @@ class CvMF(object):
     def __init__(self, algorithm, init_fn=rand_init, num_features=6, nanvalue=0, xmin=None, xmax=None,
                  lr0=None, decay_fn=None, batch_size=None,
                  lambda_user=0.1, lambda_item=0.1, max_epochs=2000, int_iter=None, stop_criterion=1e-6,
-                 err_fn=rmse, display=50, seed=42):
+                 err_fn=rmse, display=1, seed=42):
         self.algorithm = algorithm
         self.init_fn = init_fn
         self.num_features = num_features
