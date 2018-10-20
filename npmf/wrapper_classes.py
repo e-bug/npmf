@@ -20,7 +20,7 @@ from npmf.init_functions import *
 class MF(object):
     def __init__(self, algorithm, init_fn=rand_init, num_features=6, nanvalue=0, xmin=None, xmax=None,
                  lr0=None, decay_fn=None, batch_size=None,
-                 lambda_user=0.1, lambda_item=0.1, max_iter=2000, int_iter=None, stop_criterion=1e-6,
+                 lambda_user=0.1, lambda_item=0.1, max_epochs=2000, int_iter=None, stop_criterion=1e-6,
                  err_fn=rmse, display=50, seed=42):
         self.algorithm = algorithm
         self.init_fn = init_fn
@@ -32,7 +32,7 @@ class MF(object):
         self.batch_size = batch_size
         self.lambda_user = lambda_user
         self.lambda_item = lambda_item
-        self.max_iter = max_iter
+        self.max_epochs = max_epochs
         self.int_iter = int_iter
         self.stop_criterion = stop_criterion
         self.err_fn = err_fn
@@ -46,20 +46,21 @@ class MF(object):
         self.item_biases = None
         self.pred_fn = None
 
-        self.loss = None
+        self.loss_list = []
+        self.err_list = []
         self.train_errors = dict()
         self.valid_errors = dict()
         self.test_errors = dict()
 
     def fit(self, matrix, **kwargs):
-        self.user_features, self.item_features, self.user_biases, self.item_biases, self.loss, err_tr, self.pred_fn = \
+        self.user_features,self.item_features,self.user_biases,self.item_biases,self.loss_list,self.err_list,self.pred_fn = \
             self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features, nanvalue=self.nanvalue, 
                            xmin=self.xmin, xmax=self.xmax,
                            lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                            lambda_user=self.lambda_user, lambda_item=self.lambda_item,
-                           max_iter=self.max_iter, int_iter=self.int_iter,
+                           max_epochs=self.max_epochs, int_iter=self.int_iter,
                            stop_criterion=self.stop_criterion, err_fn=self.err_fn, display=self.display, seed=self.seed)
-        self.train_errors[self.err_fn.__name__] = err_tr
+        self.train_errors[self.err_fn.__name__] = self.err_list[-1]
 
     def predict(self):
         if self.user_features is None or self.item_features is None:
@@ -78,7 +79,7 @@ class MF(object):
             self.valid_errors[err_fn.__name__] = err
         elif err_type == 'test':
             self.test_errors[err_fn.__name__] = err
-        print("{} on {} set: {:.8f} .".format(err_fn.__name__, err_type, err))
+        print("{} on {} set: {:e} .".format(err_fn.__name__, err_type, err))
         del O, P
         return err
 
@@ -86,17 +87,17 @@ class MF(object):
 class WeightedMF(MF):
     def fit(self, matrix, **kwargs):
         confidence = kwargs['confidence']
-        self.user_features, self.item_features, self.user_biases, self.item_biases, self.loss, err_tr, self.pred_fn = \
+        self.user_features,self.item_features,self.user_biases,self.item_biases,self.loss_list,self.err_list,self.pred_fn = \
             self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features,
                            nanvalue=self.nanvalue,
                            confidence=confidence,
                            xmin=self.xmin, xmax=self.xmax,
                            lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                            lambda_user=self.lambda_user, lambda_item=self.lambda_item,
-                           max_iter=self.max_iter, int_iter=self.int_iter,
+                           max_epochs=self.max_epochs, int_iter=self.int_iter,
                            stop_criterion=self.stop_criterion, err_fn=self.err_fn, display=self.display,
                            seed=self.seed)
-        self.train_errors[self.err_fn.__name__] = err_tr
+        self.train_errors[self.err_fn.__name__] = self.err_list[-1]
 
 
 # ============================================= Cross-validation classes ============================================= #
@@ -104,7 +105,7 @@ class WeightedMF(MF):
 class CvMF(object):
     def __init__(self, algorithm, init_fn=rand_init, num_features=6, nanvalue=0, xmin=None, xmax=None,
                  lr0=None, decay_fn=None, batch_size=None,
-                 lambda_user=0.1, lambda_item=0.1, max_iter=2000, int_iter=None, stop_criterion=1e-6,
+                 lambda_user=0.1, lambda_item=0.1, max_epochs=2000, int_iter=None, stop_criterion=1e-6,
                  err_fn=rmse, display=50, seed=42):
         self.algorithm = algorithm
         self.init_fn = init_fn
@@ -116,7 +117,7 @@ class CvMF(object):
         self.batch_size = batch_size
         self.lambda_user = lambda_user
         self.lambda_item = lambda_item
-        self.max_iter = max_iter
+        self.max_epochs = max_epochs
         self.int_iter = int_iter
         self.stop_criterion = stop_criterion
         self.err_fn = err_fn
@@ -130,7 +131,8 @@ class CvMF(object):
         self.item_biases_list = []
         self.pred_fn = None
 
-        self.losses_list = []
+        self.loss_lists_list = []
+        self.err_lists_list = []
         self.train_errors_list = []
         self.valid_errors_list = []
         self.test_errors_list = []
@@ -148,20 +150,21 @@ class CvMF(object):
             self.valid_errors_list = [dict() for _ in range(len(matrices_list))]
             self.test_errors_list = [dict() for _ in range(len(matrices_list))]
         for i, matrix in enumerate(matrices_list):
-            user_features, item_features, user_biases, item_biases, loss, err_train, self.pred_fn = \
+            user_features, item_features, user_biases, item_biases, loss_list, err_list, self.pred_fn = \
                 self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features, 
                                nanvalue=self.nanvalue, xmin=self.xmin, xmax=self.xmax,
                                lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                                lambda_user=self.lambda_user, lambda_item=self.lambda_item, 
-                               max_iter=self.max_iter, int_iter=self.int_iter,
+                               max_epochs=self.max_epochs, int_iter=self.int_iter,
                                stop_criterion=self.stop_criterion, err_fn=self.err_fn, 
                                display=self.display, seed=self.seed)
             self.user_features_list.append(user_features)
             self.item_features_list.append(item_features)
             self.user_biases_list.append(user_biases)
             self.item_biases_list.append(item_biases)
-            self.losses_list.append(loss)
-            self.train_errors_list[i][self.err_fn.__name__] = err_train
+            self.loss_lists_list.append(loss_list)
+            self.err_lists_list.append(err_list)
+            self.train_errors_list[i][self.err_fn.__name__] = err_list[-1]
 
     def predict(self):
         if len(self.user_features_list) == 0 or len(self.item_features_list) == 0:
@@ -198,7 +201,7 @@ class CvMF(object):
                 self.test_errors_list[i][err_fn.__name__] = errs[i]
             self.test_error_agg[err_fn.__name__ + '_' + agg_fn.__name__] = err_agg
             self.test_error_dev[err_fn.__name__ + '_' + agg_fn.__name__] = err_dev
-        print("{} {} on {} data: {:.8f} %, {}:  {:.8f}.".format(agg_fn.__name__, err_fn.__name__, err_type,
+        print("{} {} on {} data: {:e}, {}:  {:e}.".format(agg_fn.__name__, err_fn.__name__, err_type,
                                                                 err_agg, dev_fn.__name__, err_dev))
         del O, P
         return err_agg, err_dev
@@ -212,17 +215,18 @@ class CvWeightedMF(CvMF):
             self.valid_errors_list = [dict() for _ in range(len(matrices_list))]
             self.test_errors_list = [dict() for _ in range(len(matrices_list))]
         for i, matrix in enumerate(matrices_list):
-            user_features, item_features, user_biases, item_biases, loss, err_train, self.pred_fn = \
+            user_features, item_features, user_biases, item_biases, loss_list, err_list, self.pred_fn = \
                 self.algorithm(train=matrix, init_fn=self.init_fn, num_features=self.num_features,
                                nanvalue=self.nanvalue, xmin=self.xmin, xmax=self.xmax, confidence=confidence,
                                lr0=self.lr0, decay_fn=self.decay_fn, batch_size=self.batch_size,
                                lambda_user=self.lambda_user, lambda_item=self.lambda_item,
-                               max_iter=self.max_iter, int_iter=self.int_iter,
+                               max_epochs=self.max_epochs, int_iter=self.int_iter,
                                stop_criterion=self.stop_criterion, err_fn=self.err_fn,
                                display=self.display, seed=self.seed)
             self.user_features_list.append(user_features)
             self.item_features_list.append(item_features)
             self.user_biases_list.append(user_biases)
             self.item_biases_list.append(item_biases)
-            self.losses_list.append(loss)
-            self.train_errors_list[i][self.err_fn.__name__] = err_train
+            self.loss_lists_list.append(loss_list)
+            self.err_lists_list.append(err_list)
+            self.train_errors_list[i][self.err_fn.__name__] = err_list[-1]

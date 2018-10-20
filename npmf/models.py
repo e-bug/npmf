@@ -23,7 +23,7 @@ import numpy as np
 
 def sgd(train, init_fn=rand_init, num_features=6, nanvalue=0,
         lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), batch_size=32,
-        lambda_user=0.1, lambda_item=0.1, max_iter=2000, stop_criterion=1e-6,
+        lambda_user=0.1, lambda_item=0.1, max_epochs=2000, stop_criterion=1e-6,
         err_fn=rmse, display=50, seed=42, **kwargs):
     """
     SGD (Stochastic Gradient Descent) for low-rank matrix factorization.
@@ -38,7 +38,7 @@ def sgd(train, init_fn=rand_init, num_features=6, nanvalue=0,
         batch_size: Number of samples employed for each training step
         lambda_user: Regularization strength for users' parameters
         lambda_item: Regularization strength for item' parameters
-        max_iter: Maximum number of epochs
+        max_epochs: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
         display: Interval of number of epochs after which to print progress
@@ -51,6 +51,7 @@ def sgd(train, init_fn=rand_init, num_features=6, nanvalue=0,
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
+    err_list = []
     if decay_fn is None:   
         decay_fn = lambda lr, step: lr
 
@@ -70,15 +71,15 @@ def sgd(train, init_fn=rand_init, num_features=6, nanvalue=0,
 
     # run
     print("start SGD...")
-    it = 0
-    while change > stop_criterion and it < max_iter:
+    e = 0
+    while change > stop_criterion and e < max_epochs:
 
         # shuffle the training rating indices
         np.random.shuffle(nz_train)
         batches = get_batches(nz_train, batch_size)
 
         # decrease step size
-        lr = decay_fn(lr0, it)
+        lr = decay_fn(lr0, e)
 
         for b in batches:
             mask = np.zeros_like(train)
@@ -99,19 +100,19 @@ def sgd(train, init_fn=rand_init, num_features=6, nanvalue=0,
                       + lambda_user * np.sum(np.power(user_features, 2))
                       + lambda_item * np.sum(np.power(item_features, 2)))
 
-        if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
         loss_list.append(loss)
+        err_list.append(err)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
-        it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
-    err_train = err
+        e += 1
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
-    return user_features, item_features, None, None, loss, err_train, pred_fn
+    return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
 
 
 def als(train, init_fn=rand_init, num_features=6, nanvalue=0,
-        lambda_user=0.1, lambda_item=0.1, max_iter=2000, stop_criterion=1e-6,
+        lambda_user=0.1, lambda_item=0.1, max_epochs=2000, stop_criterion=1e-6,
         err_fn=rmse, display=50, seed=42, **kwargs):
     """
     ALS (Alternating Least Squares) for low-rank matrix factorization.
@@ -123,7 +124,7 @@ def als(train, init_fn=rand_init, num_features=6, nanvalue=0,
         nanvalue: Value used in `train` indicating a missing entry
         lambda_user: Regularization strength for users' parameters
         lambda_item: Regularization strength for item' parameters
-        max_iter: Maximum number of epochs
+        max_epochs: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
         display: Interval of number of epochs after which to print progress
@@ -136,6 +137,7 @@ def als(train, init_fn=rand_init, num_features=6, nanvalue=0,
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
+    err_list = []
 
     # set seed
     np.random.seed(seed)
@@ -152,8 +154,8 @@ def als(train, init_fn=rand_init, num_features=6, nanvalue=0,
 
     # run
     print("start ALS...")
-    it = 0
-    while change > stop_criterion and it < max_iter:
+    e = 0
+    while change > stop_criterion and e < max_epochs:
 
         # update user feature
         for d in range(train.shape[0]):
@@ -180,20 +182,20 @@ def als(train, init_fn=rand_init, num_features=6, nanvalue=0,
                       + lambda_user * np.sum(np.power(user_features, 2))
                       + lambda_item * np.sum(np.power(item_features, 2)))
 
-        if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
         loss_list.append(loss)
+        err_list.append(err)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
-        it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
-    err_train = err
+        e += 1
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
-    return user_features, item_features, None, None, loss, err_train, pred_fn
+    return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
 
 
 def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
          lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), 
-         lambda_user=0.1, lambda_item=0.1, max_iter=2000, int_iter=200, stop_criterion=1e-6,
+         lambda_user=0.1, lambda_item=0.1, max_epochs=2000, int_iter=200, stop_criterion=1e-6,
          err_fn=rmse, display=50, seed=42, **kwargs):
     """
     ANLS (Alternating Nonnegative Least Squares) for nonnegative matrix factorization.
@@ -207,7 +209,7 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
         decay_fn: Learning rate decay function. If None, keeps it constant
         lambda_user: Regularization strength for users' parameters
         lambda_item: Regularization strength for item' parameters
-        max_iter: Maximum number of epochs
+        max_epochs: Maximum number of epochs
         int_iter: Maximum number of iterations in inner iterative procedures
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
@@ -221,6 +223,7 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
+    err_list = []
     if decay_fn is None:
         decay_fn = lambda lr, step: lr
 
@@ -239,11 +242,11 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
 
     # run
     print("start ANLS...")
-    it = 0
-    while change > stop_criterion and it < max_iter:
+    e = 0
+    while change > stop_criterion and e < max_epochs:
 
         # decrease step size
-        lr = decay_fn(lr0, it)
+        lr = decay_fn(lr0, e)
 
         # update user feature
         int_it = 0
@@ -284,19 +287,19 @@ def anls(train, init_fn=rand_init, num_features=6, nanvalue=0,
                       + lambda_user * np.sum(np.power(user_features, 2))
                       + lambda_item * np.sum(np.power(item_features, 2)))
 
-        if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
         loss_list.append(loss)
+        err_list.append(err)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
-        it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
-    err_train = err
+        e += 1
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
-    return user_features, item_features, None, None, loss, err_train, pred_fn
+    return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
 
 
 def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
-        xmin=0, xmax=1, max_iter=2000, stop_criterion=1e-6,
+        xmin=0, xmax=1, max_epochs=2000, stop_criterion=1e-6,
         err_fn=rmse, display=50, seed=42, **kwargs):
     """
     BMF (Bounded Matrix Factorization) for bounded matrix factorization (https://doi.org/10.1007/s10115-013-0710-2).
@@ -308,7 +311,7 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
         nanvalue: Value used in `train` indicating a missing entry
         xmin: Minimum value that can be predicted 
         xmax: Maximum value that can be predicted
-        max_iter: Maximum number of epochs
+        max_epochs: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
         display: Interval of number of epochs after which to print progress
@@ -347,6 +350,7 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
+    err_list = []
     D, N = train.shape
 
     # set seed
@@ -379,10 +383,10 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
 
     # run
     print("start BMF...")
-    it = 0
+    e = 0
     best_W, best_Z = None, None
     min_l = np.finfo(np.float64).max
-    while change > stop_criterion and it < max_iter:
+    while change > stop_criterion and e < max_epochs:
 
         for k in range(num_features):
             T = user_features.dot(item_features.T) - user_features[:, k, None].dot(item_features[:, k, None].T)
@@ -408,30 +412,33 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
             best_W = user_features.copy()
             best_Z = item_features.copy()
 
-        if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
         loss_list.append(loss)
+        err_list.append(err)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
-        it += 1
+        e += 1
 
     # restore best model
     user_features = best_W
     item_features = best_Z
 
-    # train error
+    # best model's loss & train error
     P = pred_fn(user_features, item_features, None, None)
+    loss = 0.5 * (np.sum(np.power(O * (train - P), 2)) / num_nz)
     err = err_fn(train, P, O)
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
-    err_train = err
+    loss_list.append(loss)
+    err_list.append(err)
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
-    return user_features, item_features, None, None, loss, err_train, pred_fn
+    return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
 
 
 # =============================================== Bias-handling models =============================================== #
 
 def sgd_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
              lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), batch_size=32,
-             lambda_user=0.1, lambda_item=0.1, max_iter=2000, stop_criterion=1e-6,
+             lambda_user=0.1, lambda_item=0.1, max_epochs=2000, stop_criterion=1e-6,
              err_fn=rmse, display=50, seed=42, **kwargs):
     """
     SGD (Stochastic Gradient Descent) for low-rank matrix factorization with biases.
@@ -446,7 +453,7 @@ def sgd_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
         batch_size: Number of samples employed for each training step
         lambda_user: Regularization strength for users' parameters
         lambda_item: Regularization strength for item' parameters
-        max_iter: Maximum number of epochs
+        max_epochs: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
         display: Interval of number of epochs after which to print progress
@@ -459,6 +466,7 @@ def sgd_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
+    err_list = []
     if decay_fn is None:
         decay_fn = lambda lr, step: lr
 
@@ -481,15 +489,15 @@ def sgd_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
 
     # run
     print("start SGD...")
-    it = 0
-    while change > stop_criterion and it < max_iter:
+    e = 0
+    while change > stop_criterion and e < max_epochs:
 
         # shuffle the training rating indices
         np.random.shuffle(nz_train)
         batches = get_batches(nz_train, batch_size)
 
         # decrease step size
-        lr = decay_fn(lr0, it)
+        lr = decay_fn(lr0, e)
 
         for b in batches:
             mask = np.zeros_like(train)
@@ -512,19 +520,19 @@ def sgd_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
                       + lambda_user * (np.sum(np.power(user_features, 2)) + np.sum(np.power(user_biases, 2)))
                       + lambda_item * (np.sum(np.power(item_features, 2)) + np.sum(np.power(item_biases, 2))))
 
-        if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
         loss_list.append(loss)
+        err_list.append(err)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
-        it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
-    err_train = err
+        e += 1
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
-    return user_features, item_features, user_biases, item_biases, loss, err_train, pred_fn
+    return user_features, item_features, user_biases, item_biases, loss_list[1:], err_list, pred_fn
 
 
 def als_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
-             lambda_user=0.1, lambda_item=0.1, max_iter=2000, stop_criterion=1e-6,
+             lambda_user=0.1, lambda_item=0.1, max_epochs=2000, stop_criterion=1e-6,
              err_fn=rmse, display=50, seed=42, **kwargs):
     """
     ALS (Alternating Least Squares) for low-rank matrix factorization with biases.
@@ -536,7 +544,7 @@ def als_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
         nanvalue: Value used in `train` indicating a missing entry
         lambda_user: Regularization strength for users' parameters
         lambda_item: Regularization strength for item' parameters
-        max_iter: Maximum number of epochs
+        max_epochs: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
         display: Interval of number of epochs after which to print progress
@@ -549,6 +557,7 @@ def als_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
     # define parameters
     change = 1
     loss_list = [np.finfo(np.float64).max]
+    err_list = []
 
     # set seed
     np.random.seed(seed)
@@ -567,8 +576,8 @@ def als_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
 
     # run
     print("start ALS...")
-    it = 0
-    while change > stop_criterion and it < max_iter:
+    e = 0
+    while change > stop_criterion and e < max_epochs:
 
         # update user feature
         for d in range(train.shape[0]):
@@ -601,12 +610,12 @@ def als_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
                       + lambda_user * (np.sum(np.power(user_features, 2)) + np.sum(np.power(user_biases, 2)))
                       + lambda_item * (np.sum(np.power(item_features, 2)) + np.sum(np.power(item_biases, 2))))
 
-        if display and not it % display:
-            print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
         loss_list.append(loss)
+        err_list.append(err)
         change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
-        it += 1
-    print("iter: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(it, loss, err_fn.__name__, err))
-    err_train = err
+        e += 1
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
-    return user_features, item_features, user_biases, item_biases, loss, err_train, pred_fn
+    return user_features, item_features, user_biases, item_biases, loss_list[1:], err_list, pred_fn
