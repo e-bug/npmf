@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+
 """
-Created by e-bug on 7/17/18
+Created by:         Emanuele Bugliarello (@e-bug)
+Date created:       7/17/2018
+Date last modified: 5/24/2019
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from npmf.error_metrics import *
 from npmf.learning_rate_decay import *
@@ -458,3 +459,4 @@ def bmf_weight(train, confidence, init_fn=rand_init, num_features=6, nanvalue=0,
     print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
     return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
+

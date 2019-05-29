@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+
 """
-Created by e-bug on 8/31/18
+Created by:         Emanuele Bugliarello (@e-bug)
+Date created:       7/17/2018
+Date last modified: 5/24/2019
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
@@ -17,3 +18,4 @@ def get_batches(l, n):
     """
     for i in range(0, len(l), n):
         yield np.array(l)[i:i+n]
+

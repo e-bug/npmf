@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+
 """
-Created by e-bug on 7/17/18
+Created by:         Emanuele Bugliarello (@e-bug)
+Date created:       7/17/2018
+Date last modified: 5/24/2019
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from npmf.error_metrics import *
 from npmf.learning_rate_decay import *
@@ -87,9 +88,9 @@ def sgd(train, init_fn=rand_init, num_features=6, nanvalue=0,
             errs = mask * (train - pred_fn(user_features, item_features, None, None))
 
             # update user_features and item_features
-            user_feats = user_features.copy()
+            user_feature = user_features.copy()
             user_features += lr * (errs.dot(item_features)/batch_size - lambda_user*user_features)
-            item_features += lr * ((errs.T).dot(user_feats)/batch_size - lambda_item*item_features)
+            item_features += lr * ((errs.T).dot(user_feature)/batch_size - lambda_item*item_features)
 
         # train error
         P = pred_fn(user_features, item_features, None, None)
@@ -302,15 +303,15 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
         xmin=0, xmax=1, max_epochs=2000, stop_criterion=1e-6,
         err_fn=rmse, display=1, seed=42, **kwargs):
     """
-    BMF (Bounded Matrix Factorization) for bounded matrix factorization (https://doi.org/10.1007/s10115-013-0710-2).
+    BMF (Bounded Matrix Factorization) for bounded matrix factorization [https://doi.org/10.1007/s10115-013-0710-2].
     
     Args:
         train: Ratings matrix to be factorized
         init_fn: Function to initialize factor matrices
         num_features: Number of latent factors to be used in factorizing `train`
         nanvalue: Value used in `train` indicating a missing entry
-        xmin: Minimum value that can be predicted 
-        xmax: Maximum value that can be predicted
+        xmin: Minimum value that can be predicted (Default: 0)
+        xmax: Maximum value that can be predicted (Default: 1)
         max_epochs: Maximum number of epochs
         stop_criterion: Minimum relative difference in loss function to continue training
         err_fn: Function to evaluate training performance
@@ -357,7 +358,7 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
     np.random.seed(seed)
 
     # define function to predict matrix
-    pred_fn = lambda user_feats, item_feats, user_bias, item_bias: user_features.dot(item_feats.T)
+    pred_fn = lambda user_feats, item_feats, user_bias, item_bias: user_feats.dot(item_feats.T)
 
     # init matrix
     user_features, item_features = init_fn(train.shape[0], train.shape[1], num_features)
@@ -429,6 +430,103 @@ def bmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
     err = err_fn(train, P, O)
     loss_list.append(loss)
     err_list.append(err)
+    print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
+
+    return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
+
+
+def pmf(train, init_fn=rand_init, num_features=6, nanvalue=0,
+        lr0=0.01, decay_fn=lambda lr, step: inverse_time_decay(lr, step, 0.5, 2000, False), batch_size=32,
+        lambda_user=0.1, lambda_item=0.1, xmin=0, xmax=1, max_epochs=2000, stop_criterion=1e-6,
+        err_fn=rmse, display=1, seed=42, **kwargs):
+    """
+    PMF (Probabilistic Matrix Factorization) [https://papers.nips.cc/paper/3208-probabilistic-matrix-factorization.pdf].
+
+    Args:
+        train: Ratings matrix to be factorized
+        init_fn: Function to initialize factor matrices
+        num_features: Number of latent factors to be used in factorizing `train`
+        nanvalue: Value used in `train` indicating a missing entry
+        lr0: Initial learning rate
+        decay_fn: Learning rate decay function. If None, keeps it constant
+        batch_size: Number of samples employed for each training step
+        lambda_user: Regularization strength for users' parameters
+        lambda_item: Regularization strength for item' parameters
+        xmin: Minimum value that can be predicted (Default: 0)
+        xmax: Maximum value that can be predicted (Default: 1)
+        max_epochs: Maximum number of epochs
+        stop_criterion: Minimum relative difference in loss function to continue training
+        err_fn: Function to evaluate training performance
+        display: Interval of number of epochs after which to print progress
+        seed: Random seed
+    Returns:
+        Factor matrix of users, factor matrix of items, None, None,
+        final training error, function to compute prediction matrix
+    """
+
+    # define parameters
+    change = 1
+    loss_list = [np.finfo(np.float64).max]
+    err_list = []
+    if decay_fn is None:
+        decay_fn = lambda lr, step: lr
+
+    # set seed
+    np.random.seed(seed)
+
+    # define function to predict matrix
+    pred_fn = lambda user_feats, item_feats, user_bias, item_bias: 1 / (1 + np.exp(-user_feats.dot(item_feats.T)))
+
+    # init matrix
+    user_features, item_features = init_fn(train.shape[0], train.shape[1], num_features)
+
+    # find the non-zero ratings indices
+    nz_train = list(map(tuple, np.argwhere(train != nanvalue)))
+    O = train != nanvalue
+    num_nz = np.sum(O)
+
+    # rescale ratings
+    train = (train - xmin) / (xmax - xmin)
+
+    # run
+    print("start PMF...")
+    e = 0
+    while change > stop_criterion and e < max_epochs:
+
+        # shuffle the training rating indices
+        np.random.shuffle(nz_train)
+        batches = get_batches(nz_train, batch_size)
+
+        # decrease step size
+        lr = decay_fn(lr0, e)
+
+        for b in batches:
+            mask = np.zeros_like(train)
+            mask[b[:, 0], b[:, 1]] = 1
+            pred = pred_fn(user_features, item_features, None, None)
+            errs = mask * (train - pred)
+
+            # update user_features and item_features
+            user_feature = user_features.copy()
+            H = errs * pred * (1 - pred)
+            user_features += lr * (H.dot(item_features) / batch_size - lambda_user * user_features)
+            item_features += lr * ((H.T).dot(user_feature) / batch_size - lambda_item * item_features)
+
+        # train error
+        P = pred_fn(user_features, item_features, None, None)
+        err = err_fn(train, P, O)
+
+        # loss value
+        loss = 0.5 * (np.sum(np.power(O * (train - P), 2)) / num_nz
+                      + lambda_user * np.sum(np.power(user_features, 2))
+                      + lambda_item * np.sum(np.power(item_features, 2)))
+
+        if display and not e % display:
+            print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
+        loss_list.append(loss)
+        err_list.append(err)
+        change = np.fabs(loss_list[-1] - loss_list[-2]) / np.fabs(loss_list[-1])
+        e += 1
     print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
     return user_features, item_features, None, None, loss_list[1:], err_list, pred_fn
@@ -619,3 +717,4 @@ def als_bias(train, init_fn=rand_init, num_features=6, nanvalue=0,
     print("epoch: {:4d}, loss: {:e} -- {} on training set: {:e} .".format(e, loss, err_fn.__name__, err))
 
     return user_features, item_features, user_biases, item_biases, loss_list[1:], err_list, pred_fn
+

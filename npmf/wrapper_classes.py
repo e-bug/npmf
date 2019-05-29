@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+
 """
-Created by e-bug on 7/17/18
+Created by:         Emanuele Bugliarello (@e-bug)
+Date created:       7/17/2018
+Date last modified: 5/24/2019
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from npmf.error_metrics import *
 from npmf.init_functions import *
@@ -71,8 +72,11 @@ class MF(object):
         if self.user_features is None or self.item_features is None:
             raise RuntimeError('Model not fit yet')
         O = matrix != self.nanvalue
+        if self.xmin is not None and self.xmax is not None:
+            matrix = (matrix - self.xmin) / (self.xmax - self.xmin)
         P = self.pred_fn(self.user_features, self.item_features, self.user_biases, self.item_biases)
         err = err_fn(matrix, P, O)
+        err_type = err_type.lower()
         if err_type == 'train':
             self.train_errors[err_fn.__name__] = err
         elif err_type == 'validation':
@@ -181,28 +185,34 @@ class CvMF(object):
         errs = []
         for i, matrix in enumerate(matrices_list):
             O = matrix != self.nanvalue
+            if self.xmin is not None and self.xmax is not None:
+                matrix = (matrix - self.xmin) / (self.xmax - self.xmin)
             P = self.pred_fn(self.user_features_list[i], self.item_features_list[i],
                              self.user_biases_list[i], self.item_biases_list[i])
             errs.append(err_fn(matrix, P, O))
         err_agg = agg_fn(errs)
         err_dev = dev_fn(errs)
+        err_type = err_type.lower()
         if err_type == 'train':
+            self.train_errors_list = [dict()] * len(errs)
             for i in range(len(errs)):
                 self.train_errors_list[i][err_fn.__name__] = errs[i]
             self.train_error_agg[err_fn.__name__ + '_' + agg_fn.__name__] = err_agg
             self.train_error_dev[err_fn.__name__ + '_' + agg_fn.__name__] = err_dev
         elif err_type == 'validation':
+            self.valid_errors_list = [dict()] * len(errs)
             for i in range(len(errs)):
                 self.valid_errors_list[i][err_fn.__name__] = errs[i]
             self.valid_error_agg[err_fn.__name__ + '_' + agg_fn.__name__] = err_agg
             self.valid_error_dev[err_fn.__name__ + '_' + agg_fn.__name__] = err_dev
         elif err_type == 'test':
+            self.test_errors_list = [dict()] * len(errs)
             for i in range(len(errs)):
                 self.test_errors_list[i][err_fn.__name__] = errs[i]
             self.test_error_agg[err_fn.__name__ + '_' + agg_fn.__name__] = err_agg
             self.test_error_dev[err_fn.__name__ + '_' + agg_fn.__name__] = err_dev
         print("{} {} on {} data: {:e}, {}:  {:e}.".format(agg_fn.__name__, err_fn.__name__, err_type,
-                                                                err_agg, dev_fn.__name__, err_dev))
+                                                          err_agg, dev_fn.__name__, err_dev))
         del O, P
         return err_agg, err_dev
 
@@ -230,3 +240,4 @@ class CvWeightedMF(CvMF):
             self.loss_lists_list.append(loss_list)
             self.err_lists_list.append(err_list)
             self.train_errors_list[i][self.err_fn.__name__] = err_list[-1]
+
