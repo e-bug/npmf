@@ -3,10 +3,11 @@
 NumPy Matrix Factorization (npMF) is a Python package that only depends on NumPy providing a unified interface to different constrained and unconstrained low-rank matrix factorization methods.
 
 npMF currently implements the following algorithms:
-- Stochastic gradient descent (SGD), with and without biases
-- Alternating least squares (ALS), with and without biases
-- Alternating nonnegative least squares (ANLS)
+- Stochastic gradient descent (SGD) for MF, with and without biases
+- Alternating least squares (ALS) for MF, with and without biases
+- Alternating nonnegative least squares (ANLS) for NMF
 - [Bounded matrix factorization](https://doi.org/10.1007/s10115-013-0710-2) (BMF)
+- [Probabilistic Matrix Factorization](https://papers.nips.cc/paper/3208-probabilistic-matrix-factorization.pdf) (PMF)
 
 Each of these methods is also extended to take a matrix of confidence levels to give each entry a different weight, as commonly required in implicit feedback recommender systems.
 
@@ -170,4 +171,4 @@ cvSGD.score(err_fn=npmf.error_metrics.mae, matrices_list=valid_matrices, err_typ
 ## License
 
 The project was started at [Technicolor AI Lab](http://www.technicolorbayarea.com/) in early 2018.
-It is now distributed under the MIT license.
+It is now distributed under the [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) license. See [`LICENSE`](LICENSE) for details.
